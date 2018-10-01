@@ -1,0 +1,13 @@
+#progress-block {
+  label {
+    font-weight: bold;
+  }
+
+  .progress {
+    height: 20px;
+
+    .progress-bar {
+      width: 100%
+    }
+  }
+}

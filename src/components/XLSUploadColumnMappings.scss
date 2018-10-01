@@ -1,0 +1,16 @@
+select.error {
+  color: #dc3545;
+  border: 2px solid #dc3545;
+}
+
+.mappingErrors {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.columnMappingTable {
+  th:nth-child(2), td:nth-child(2),
+  th:nth-child(3), td:nth-child(3) {
+    text-align: center;
+  }
+}
