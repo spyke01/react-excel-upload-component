@@ -60,7 +60,7 @@ class XLSUploadWrapper extends Component {
         start: 0,
         stop: maxInAGroup,
         columnMap: null,
-        url: 'demo.php',
+        url: 'sleepDemo.php',
         additionalPostData: [],
         uploading: false,
         uploadProgressAnimated: false,
@@ -135,7 +135,7 @@ class XLSUploadWrapper extends Component {
             uploading: true,
             uploadProgressAnimated: false,
             uploadProgressPercentage: 3,
-            uploadProgressTitle: `Uploading 1 of ${this.groups}`,
+            uploadProgressTitle: `Uploading 1 of ${numGroups}`,
           },
         },
       }), () => {
@@ -207,7 +207,7 @@ class XLSUploadWrapper extends Component {
       }
       this.updateProgress(uploaderIndex);
     }).catch((error) => {
-      XLSUpload.showSwalAlert('ERROR OCCURRED! ' + JSON.stringify(error) + '<br />');
+      XLSUpload.showSwalAlert(`ERROR OCCURRED! ${error}`);
       this.updateProgress(uploaderIndex);
     });
   }
@@ -217,7 +217,7 @@ class XLSUploadWrapper extends Component {
    * @param uploaderIndex
    */
   updateProgress(uploaderIndex) {
-    const { batch, groups } = this.state;
+    const { batch, groups } = this.state.uploaders[uploaderIndex];
 
     // This method is called when the server returned a response, either success or failure
 
@@ -259,7 +259,7 @@ class XLSUploadWrapper extends Component {
     }
     else {
       // Call the next guy in the queue
-      this.callPushDataToServer();
+      this.callPushDataToServer(uploaderIndex);
     }
   }
 
@@ -269,33 +269,37 @@ class XLSUploadWrapper extends Component {
    * @returns {*}
    */
   render() {
-    const { numUploaders } = this.props;
-    const { maxInAGroup, uploadProgressAnimated, uploadProgressPercentage, uploadProgressTitle, uploading } = this.state;
+    // const { numUploaders } = this.props;
+    const { uploaders } = this.state;
 
     const fileUploaders = [];
+    let currentlyUploading = false;
 
-    for (let i = 0; i < numUploaders; i++) {
+    Object.entries(uploaders).forEach(([uploaderIndex, uploaderData]) => {
+      const { maxInAGroup, uploadProgressAnimated, uploadProgressPercentage, uploadProgressTitle, uploading } = uploaderData;
+
       if (uploading) {
+        currentlyUploading = true;
         fileUploaders.push(
-          <XLSUploadProgress key={i} animated={uploadProgressAnimated} uploadProgressPercentage={uploadProgressPercentage} title={uploadProgressTitle} active visible />,
+          <XLSUploadProgress key={uploaderIndex} animated={uploadProgressAnimated} uploadProgressPercentage={uploadProgressPercentage} title={uploadProgressTitle} active visible />,
         );
       } else {
         fileUploaders.push(
           <XLSUpload
-            key={i}
+            key={uploaderIndex}
             disabled={uploading}
             maxInAGroup={maxInAGroup}
-            saveMappings={(columnMap, sheetData) => this.handleSaveMappings(i, columnMap, sheetData)}
+            saveMappings={(columnMap, sheetData) => this.handleSaveMappings(uploaderIndex, columnMap, sheetData)}
             serverColumnNames={['Name', 'Email', 'Phone Number']}
           />,
         );
       }
-    }
+    });
 
     return (
       <div>
         {fileUploaders}
-        {!uploading && <button type="button" className="btn btn-success btn-large btn-fill" onClick={this.handleOnClickFinalize}>Finalize</button>}
+        {!currentlyUploading && <button type="button" className="btn btn-success btn-large btn-fill" onClick={this.handleOnClickFinalize}>Finalize</button>}
       </div>
     );
   }

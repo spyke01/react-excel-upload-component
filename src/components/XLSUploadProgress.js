@@ -13,11 +13,11 @@ const XLSUploadProgress = (props) => {
 
   // Render all the things!
   return (
-    <div id="progress-block" className="form-group">
+    <div className="progress-block form-group">
       <label>{title}</label>
       <div className="progress">
         <div
-          className={classNames('progress-bar', 'progress-bar-striped', { 'active': active }, { 'progress-bar-animated': animated }, { 'progress-bar-danger': error })}
+          className={classNames('progress-bar', 'progress-bar-striped', { 'active': active }, { 'progress-bar-animated': animated }, { 'progress-bar-danger': error }, { 'progress-bar-success bg-success': progressPercentage === 100 })}
           role="progressbar"
           aria-valuenow="100"
           aria-valuemin="0"
