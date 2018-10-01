@@ -16,11 +16,19 @@ class XLSUploadWrapper extends Component {
     };
 
     this.callPushDataToServer = this.callPushDataToServer.bind(this);
+    this.fillUploaderState = this.fillUploaderState.bind(this);
     this.handleOnClickFinalize = this.handleOnClickFinalize.bind(this);
     this.handleSaveMappings = this.handleSaveMappings.bind(this);
     this.pushDataToServer = this.pushDataToServer.bind(this);
     this.startUpload = this.startUpload.bind(this);
     this.updateProgress = this.updateProgress.bind(this);
+  }
+
+  /**
+   *
+   */
+  componentWillMount() {
+    this.fillUploaderState(this.props);
   }
 
   /**
@@ -30,44 +38,58 @@ class XLSUploadWrapper extends Component {
    */
   componentWillReceiveProps(nextProps) {
     if (nextProps.maxInAGroup !== this.props.maxInAGroup || nextProps.numUploaders !== this.props.numUploaders) {
-      const uploaders = {};
-
-      // Default all of our columns to "Ignore"
-      for (let i = 0; i < nextProps.numUploaders; i++) {
-        uploaders[i] = {
-          maxInAGroup: nextProps.maxInAGroup,
-          batch: 0,
-          groups: 0,
-          start: 0,
-          stop: nextProps.maxInAGroup,
-          columnMap: null,
-          url: 'test.php',
-          additionalPostData: [],
-          uploading: false,
-          uploadProgressAnimated: false,
-          uploadProgressPercentage: 100,
-          uploadProgressTitle: '',
-        };
-      }
-
-      this.setState({ uploaders });
+      this.fillUploaderState(nextProps);
     }
   }
 
   /**
-   * THis allows us to get the column mapping selected by a user deep down in the depths.
+   *
+   * @param props
+   */
+  fillUploaderState(props) {
+    const { maxInAGroup, numUploaders } = props;
+
+    const uploaders = {};
+
+    // Default all of our columns to "Ignore"
+    for (let i = 0; i < numUploaders; i++) {
+      uploaders[i] = {
+        maxInAGroup,
+        batch: 0,
+        groups: 0,
+        start: 0,
+        stop: maxInAGroup,
+        columnMap: null,
+        url: 'demo.php',
+        additionalPostData: [],
+        uploading: false,
+        uploadProgressAnimated: false,
+        uploadProgressPercentage: 0,
+        uploadProgressTitle: '',
+      };
+    }
+
+    this.setState({ uploaders });
+  }
+
+  /**
+   * This allows us to get the column mapping selected by a user deep down in the depths.
    *
    * @param uploaderIndex
    * @param columnMap
+   * @param sheetData
    */
-  handleSaveMappings(uploaderIndex, columnMap) {
-    this.setState((state) => ({ uploaders: {
+  handleSaveMappings(uploaderIndex, columnMap, sheetData) {
+    console.log(`saving ${uploaderIndex}: ${columnMap}`);
+    this.setState((state) => ({
+      uploaders: {
         ...state.uploaders,
         [uploaderIndex]: {
           ...state.uploaders[uploaderIndex],
-          columnMap
-        }
-      }
+          columnMap,
+          sheetData,
+        },
+      },
     }));
   }
 
@@ -83,31 +105,43 @@ class XLSUploadWrapper extends Component {
    */
   startUpload() {
     const { uploaders } = this.state;
-    
+
     //  Loop through the uploaders base don our num of uploaders
     Object.entries(uploaders).forEach(([uploaderIndex, uploaderData]) => {
-      const { maxInAGroup } = uploaderData;
+      const { columnMap, maxInAGroup, sheetData } = uploaderData;
+      console.log(uploaderData);
 
-      // TODO: Pull the data from the depths
-      let data = null;
+      // If we don't have everything then skip this guy
+      if (columnMap == null || columnMap.length <= 0 || sheetData == null || sheetData.length <= 0) {
+        console.log(columnMap && columnMap.length);
+        console.log(sheetData && sheetData.length);
+        return true;
+      }
 
       // Remove the headers
-      data.splice(0, 1);
+      const numRows = sheetData.length;
 
       // get the result of the division
       // if there are remainders, add 1 to the division to care for them
-      let numGroups = parseInt(data.length / maxInAGroup) + ((data.length % maxInAGroup) > 0 ? 1 : 0);
+      let numGroups = parseInt(numRows / maxInAGroup) + ((numRows % maxInAGroup) > 0 ? 1 : 0);
 
-      this.setState({
-        groups: numGroups,
-        uploading: true,
-        uploadProgressAnimated: false,
-        uploadProgressPercentage: 3,
-        uploadProgressTitle: `Uploading 1 of ${this.groups}`,
+      this.setState((state) => ({
+        uploaders: {
+          ...state.uploaders,
+          [uploaderIndex]: {
+            ...state.uploaders[uploaderIndex],
+            groups: numGroups,
+            start: 1,
+            uploading: true,
+            uploadProgressAnimated: false,
+            uploadProgressPercentage: 3,
+            uploadProgressTitle: `Uploading 1 of ${this.groups}`,
+          },
+        },
+      }), () => {
+        // Ignite the chain
+        this.callPushDataToServer(uploaderIndex);
       });
-
-      // Ignite the chain
-      this.callPushDataToServer(uploaderIndex);      
     });
   }
 
@@ -116,10 +150,7 @@ class XLSUploadWrapper extends Component {
    * @returns {boolean}
    */
   callPushDataToServer(uploaderIndex) {
-    const { batch, groups, start, stop } = this.state.uploaders[uploaderIndex];
-
-    // TODO: Pull the data from the depths
-    let data = null;
+    const { batch, groups, sheetData, start, stop } = this.state.uploaders[uploaderIndex];
 
     if (batch >= groups) {
       //just in case, but this is handled in update_progress
@@ -129,13 +160,19 @@ class XLSUploadWrapper extends Component {
 
     // extract the next batch from the whole data
     // console.log("Pushing batch " + batch + " to server | start = " + start + " stop = " + stop);
-    let currentData = data.slice(start, stop);
+    let currentData = sheetData.slice(start, stop);
     setTimeout(this.pushDataToServer(uploaderIndex, currentData), 1000);
 
     // Increase the index for the next batch so we know where we are
     this.setState((state) => ({
-      start: state.stop,
-      stop: state.stop + state.maxInAGroup,
+      uploaders: {
+        ...state.uploaders,
+        [uploaderIndex]: {
+          ...state.uploaders[uploaderIndex],
+          start: state.stop,
+          stop: state.stop + state.maxInAGroup,
+        },
+      },
     }));
   }
 
@@ -145,15 +182,16 @@ class XLSUploadWrapper extends Component {
    * @param data
    */
   pushDataToServer(uploaderIndex, data) {
-    const { columnMap } = this.state;
+    const { additionalPostData, columnMap, url } = this.state.uploaders[uploaderIndex];
 
     // Merge payload with any extra data
     let payload = {
       column_map: JSON.parse(columnMap),
       data: data,
+      ...additionalPostData
     };
 
-    fetch('myUploader.php', {
+    fetch(url, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
@@ -167,44 +205,56 @@ class XLSUploadWrapper extends Component {
       if (response.error) {
         XLSUpload.showSwalAlert(JSON.stringify(response.error));
       }
-      this.updateProgress();
+      this.updateProgress(uploaderIndex);
     }).catch((error) => {
       XLSUpload.showSwalAlert('ERROR OCCURRED! ' + JSON.stringify(error) + '<br />');
-      console.log(error);
-      this.updateProgress();
+      this.updateProgress(uploaderIndex);
     });
   }
 
   /**
    *
+   * @param uploaderIndex
    */
-  updateProgress() {
+  updateProgress(uploaderIndex) {
     const { batch, groups } = this.state;
 
     // This method is called when the server returned a response, either success or failure
 
     // Increase the this.batch
     let thisBatch = batch + 1;
-    this.setState({ batch: thisBatch });
 
     // Calculate the width of the progress bar and percentage done
     // it is safe to do this here as this.batch this.starts from 0
     let percentComplete = parseInt((thisBatch / groups) * 100);
-    this.setState({
-      uploading: true,
-      uploadProgressPercentage: percentComplete,
-      uploadProgressTitle: `Uploaded ${thisBatch} of ${groups}`,
-    });
+    this.setState((state) => ({
+      uploaders: {
+        ...state.uploaders,
+        [uploaderIndex]: {
+          ...state.uploaders[uploaderIndex],
+          batch: thisBatch,
+          uploading: true,
+          uploadProgressPercentage: percentComplete,
+          uploadProgressTitle: `Uploaded ${thisBatch} of ${groups}`,
+        },
+      },
+    }));
 
     if (thisBatch >= groups) {
       // If thisBatch is greater than or equal to the number of available groups then we are done
       // Reset the uploader items
       this.setState((state) => ({
-        batch: 0,
-        groups: 0,
-        start: 0,
-        stop: state.maxInAGroup,
-        uploadProgressAnimated: false,
+        uploaders: {
+          ...state.uploaders,
+          [uploaderIndex]: {
+            ...state.uploaders[uploaderIndex],
+            batch: 0,
+            groups: 0,
+            start: 0,
+            stop: state.maxInAGroup,
+            uploadProgressAnimated: false,
+          },
+        },
       }));
     }
     else {
@@ -235,7 +285,7 @@ class XLSUploadWrapper extends Component {
             key={i}
             disabled={uploading}
             maxInAGroup={maxInAGroup}
-            saveMappings={(columnMap) => this.handleSaveMappings(i, columnMap)}
+            saveMappings={(columnMap, sheetData) => this.handleSaveMappings(i, columnMap, sheetData)}
             serverColumnNames={['Name', 'Email', 'Phone Number']}
           />,
         );

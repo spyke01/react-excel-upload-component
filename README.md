@@ -15,6 +15,3 @@ To install the actual dependencies required for this component into your own app
 
 ### Compatibility Notes
 Since this app was create with the create-react-app package it relies on webpack for it's build process. If you need to use this in gulp then you will need to take the SCSS file inclusions out of the JS files and load them separately or use an additional package top handle these accordingly.
-
-### Known Issues
-The code to process the uploads is not currently finished. The projec tis in a holding pattern while we determine if we are going to persue React for it due to time constraints. It should take only a few hours to finalize this area and given time I will work on this. In the meantime the code is as-is.

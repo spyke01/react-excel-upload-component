@@ -23,29 +23,47 @@ class XLSUploadColumnMappings extends Component {
   }
 
   /**
+   *
+   */
+  componentWillMount() {
+    this.resetState(this.props);
+  }
+
+  /**
    * Reset our selections if our data changes.
    *
    * @param nextProps
    */
-  componentWillReceiveProps(nextProps){
-    if(nextProps.sheetData !== this.props.sheetData || nextProps.serverColumnNames !== this.props.serverColumnNames){
-      const selections = new Map();
-      const sheetData = nextProps.sheetData;
+  componentWillReceiveProps(nextProps) {
+    if (JSON.stringify(nextProps.sheetData) !== JSON.stringify(this.props.sheetData) || JSON.stringify(nextProps.serverColumnNames) !== JSON.stringify(this.props.serverColumnNames)) {
+      this.resetState(nextProps);
+    }
+  }
 
-      // Default all of our columns to "Ignore"
-      if (sheetData != null) {
-        if (sheetData[1] != null) {
-          for (let i = 0; i < sheetData[1].length; i++) {
-            selections.set(i, -1);
-          }
+  /**
+   *
+   * @param props
+   */
+  resetState(props) {
+    const { sheetData } = props;
+    console.log('reseting state');
+    console.log(sheetData);
+
+    const selections = new Map();
+
+    // Default all of our columns to "Ignore"
+    if (sheetData != null) {
+      if (sheetData[1] != null) {
+        for (let i = 0; i < sheetData[1].length; i++) {
+          selections.set(i, '-1');
         }
       }
-
-      this.setState({
-        selections,
-        selectionsWithErrors: [],
-      });
     }
+
+    this.setState({
+      selections,
+      selectionsWithErrors: [],
+    });
   }
 
   /**
@@ -57,21 +75,22 @@ class XLSUploadColumnMappings extends Component {
    * @returns {boolean}
    */
   handleMappingChange(e, index) {
-    const {handleChangeMappings} = this.props;
-    const {selections} = this.state;
+    const { handleChangeMappings } = this.props;
+    const { selections } = this.state;
 
     // First save what we changed to
     const updatedSelections = new Map(selections);
     updatedSelections.set(index, e.target.value);
+
     this.setState({ selections: updatedSelections }, () => {
+      console.log('Generating new mapping');
+      console.log(updatedSelections);
       // Let's do some error checking on our selections
       let mappings = this.prepareColumnMap();
 
-      if (!mappings) {
-        return false;
+      if (mappings) {
+        handleChangeMappings(mappings);
       }
-
-      handleChangeMappings(mappings);
     });
   }
 
@@ -84,9 +103,11 @@ class XLSUploadColumnMappings extends Component {
     let colMap = '{';
     let haveErrors = false;
     let selectionsWithErrors = [];
-    const {selections} = this.state;
+    const { selections } = this.state;
+    // console.log(selections);
 
     selections.forEach((value, key) => {
+      // console.log(`value: ${value} key: ${key}`);
       if (value !== '-1') {
         let regex = new RegExp('\\b' + value + '\\b');
 
@@ -103,6 +124,7 @@ class XLSUploadColumnMappings extends Component {
     });
 
     this.setState({ selectionsWithErrors });
+    // console.log(selectionsWithErrors);
 
     if (haveErrors) {
       return false;
@@ -138,7 +160,7 @@ class XLSUploadColumnMappings extends Component {
               <td>{sheetData[1][i]}</td>
               <td><i className="fa fa-arrow-right" /></td>
               <td>
-                <select className={classNames({ error: (selectionsWithErrors.indexOf(i) !== -1) })} key={uuid.v4()} value={selections.get(i) || -1} onChange={(e) => this.handleMappingChange(e, i)}>
+                <select className={classNames({ error: (selectionsWithErrors.indexOf(i) !== -1) })} key={uuid.v4()} value={selections.get(i) || '-1'} onChange={(e) => this.handleMappingChange(e, i)}>
                   {dynamicOptions}
                 </select>
               </td>

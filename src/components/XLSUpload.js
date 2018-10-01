@@ -12,24 +12,24 @@ import './XLSUpload.scss';
 class XLSUpload extends Component {
   /**
    * Convert a string to an array buffer.
-   * 
+   *
    * @param s
    * @returns {ArrayBuffer}
    */
   static s2ab(s) {
     let b = new ArrayBuffer(s.length);
     let v = new Uint8Array(b);
-    
+
     for (let i = 0; i !== s.length; ++i) {
       v[i] = s.charCodeAt(i) & 0xFF;
     }
-    
+
     return b;
   }
-  
+
   /**
    * Show a sweet looking alert, fall back alert in case sweet alert is not loaded.
-   * 
+   *
    * @param message
    */
   static showSwalAlert(message) {
@@ -42,7 +42,7 @@ class XLSUpload extends Component {
 
   /**
    * Verify we uploaded a correct type of file.
-   * 
+   *
    * @param file
    * @returns {boolean}
    */
@@ -57,7 +57,7 @@ class XLSUpload extends Component {
   }
 
   /**
-   * 
+   *
    * @param props
    */
   constructor(props) {
@@ -69,7 +69,7 @@ class XLSUpload extends Component {
     this.state = {
       fileName: null,
       sheetData: [],
-      columnMappings: [],
+      // columnMappings: null,
 
       // Progress Bar items
       progressBar: {
@@ -85,30 +85,17 @@ class XLSUpload extends Component {
 
     this.handleOnChange = this.handleOnChange.bind(this);
     this.handleChangeMappings = this.handleChangeMappings.bind(this);
-    this.handleSaveMappings = this.handleSaveMappings.bind(this);
-  }
-
-  /**
-   * When mappings change lets save them for later.
-   */
-  handleChangeMappings(mappings) {
-    this.setState({ columnMappings: mappings });
   }
 
   /**
    * When mappings change lets send them up to our wrapper so that we can process the data.
-   *
-   * @returns {boolean}
    */
-  handleSaveMappings() {
-    const {saveMappings} = this.props;
-    const {columnMappings} = this.state;
+  handleChangeMappings(mappings) {
+    const { saveMappings } = this.props;
+    const { sheetData } = this.state;
 
-    if (!columnMappings) {
-      return false;
-    }
-
-    saveMappings(columnMappings);
+    // this.setState({ columnMappings: mappings });
+    saveMappings(mappings, sheetData);
   }
 
   /**
@@ -228,7 +215,7 @@ class XLSUpload extends Component {
 
   /**
    * Process our uploaded workbooks
-   * 
+   *
    * @param wb
    * @returns {boolean}
    */
@@ -260,7 +247,7 @@ class XLSUpload extends Component {
 
   /**
    * Make all the pretty things!
-   * 
+   *
    * @returns {*}
    */
   render() {
